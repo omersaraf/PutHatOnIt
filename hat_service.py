@@ -1,31 +1,30 @@
-import os
 from io import BytesIO
+from typing import List
 
 from PIL import Image
 
-from detection.dog_face_detector import DogFaceDetector
-from detection.human_face_detector import HumanFaceDetector
-from wearer.skyrim_helmet_wearer import SkyrimHelmetWearer
-
-HELMET_PATH = 'skyrim.png'
-
-detectors = [HumanFaceDetector(), DogFaceDetector()]
-wearer = SkyrimHelmetWearer(HELMET_PATH)
+from detection.detector import FaceDetector
+from face_modifiers.face_modifier import FaceModifier
 
 
-def put_hat_on_it(image: BytesIO):
-    img = Image.open(image)
+class HatService:
+    def __init__(self, detectors: List[FaceDetector], face_modifiers: List[FaceModifier]):
+        self.face_modifiers = face_modifiers
+        self.detectors = detectors
 
-    for location in _get_face_locations(image):
-        img = wearer.wear(img, location)
+    def put_hat_on_it(self, image: BytesIO):
+        img = Image.open(image)
 
-    new_image = BytesIO()
-    img.save(new_image, format=HELMET_PATH.split(os.path.extsep)[-1])
-    new_image.seek(0)
-    return new_image
+        for location in self._get_face_locations(image):
+            for modifier in self.face_modifiers:
+                img = modifier.modify(img, location)
 
+        new_image = BytesIO()
+        img.save(new_image, format="png")
+        new_image.seek(0)
+        return new_image
 
-def _get_face_locations(image: BytesIO):
-    for detector in detectors:
-        image.seek(0)
-        yield from detector.detect(image)
+    def _get_face_locations(self, image: BytesIO):
+        for detector in self.detectors:
+            image.seek(0)
+            yield from detector.detect(image)
